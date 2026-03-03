@@ -1,5 +1,6 @@
 const state = {
   portraitDataUrl: "",
+  portraitFile: null,
   post: null,
   research: { trends: [], sources: [] },
   overlays: [],
@@ -61,6 +62,7 @@ els.sharpness.addEventListener("input", () => {
 els.portrait.addEventListener("change", async (e) => {
   const file = e.target.files?.[0];
   if (!file) return;
+  state.portraitFile = file;
   state.portraitDataUrl = await fileToDataUrl(file);
   els.portraitPreview.src = state.portraitDataUrl;
   els.portraitPreview.hidden = false;
@@ -70,8 +72,7 @@ els.portrait.addEventListener("change", async (e) => {
 document.querySelectorAll("[data-copy]").forEach((btn) => {
   btn.addEventListener("click", async () => {
     const id = btn.getAttribute("data-copy");
-    const value = els[id].value;
-    await navigator.clipboard.writeText(value || "");
+    await navigator.clipboard.writeText(els[id].value || "");
     setStatus(`In Zwischenablage kopiert: ${id}`);
   });
 });
@@ -85,11 +86,11 @@ document.getElementById("render11").addEventListener("click", () => renderCanvas
 
 async function generate(mode = "all") {
   const apiKey = els.apiKey.value.trim();
-  if (!apiKey) return setStatus("Bitte API Key setzen.");
+  if (!apiKey) return setStatus("Bitte OpenAI API Key setzen.");
   if (!els.thesis.value.trim()) return setStatus("Bitte These/Draft ausfüllen.");
 
   try {
-    setStatus("Generiere Inhalte mit Gemini ...");
+    setStatus("Generiere Inhalte mit GPT ...");
     if (els.researchToggle.checked && mode === "all") {
       state.research = await fetchResearch(apiKey);
       renderResearch();
@@ -116,11 +117,8 @@ async function generate(mode = "all") {
 }
 
 async function fetchResearch(apiKey) {
-  const prompt = `Finde 3-5 aktuelle Trendpunkte für DACH/DE zu KI-Workflows in Unternehmen.\nLiefere zusätzlich 3 Quellenlinks.\nAntwort als JSON: {"trends":["..."],"sources":["https://..."]}`;
-  const text = await geminiGenerate(apiKey, prompt, {
-    model: "gemini-2.5-pro",
-    tools: [{ google_search: {} }],
-  });
+  const prompt = `Finde 3-5 aktuelle Trendpunkte (DACH/DE) zu KI-Workflows in Unternehmen.\nLiefere 3 belastbare Quellenlinks.\nAntwort NUR als JSON: {"trends":["..."],"sources":["https://..."]}`;
+  const text = await gptGenerate(apiKey, prompt, { useWebSearch: true });
   const parsed = safeJson(text);
   return {
     trends: (parsed.trends || []).slice(0, 5),
@@ -131,8 +129,10 @@ async function fetchResearch(apiKey) {
 async function fetchPostBundle(apiKey, mode) {
   const sharp = Number(els.sharpness.value);
   const limits = sharp > 66 ? "240-280" : "220-260";
-  const prompt = `Du bist ein LinkedIn Ghostwriter in Niklas-Mode.\n
-Schreibe nur gültiges JSON, kein Markdown.\nSchema:\n{
+  const prompt = `Du bist ein LinkedIn Ghostwriter in Niklas-Mode.
+Schreibe NUR gültiges JSON, kein Markdown.
+Schema:
+{
   "finalPost":"...",
   "hookA":"...",
   "hookB":"...",
@@ -140,10 +140,21 @@ Schreibe nur gültiges JSON, kein Markdown.\nSchema:\n{
   "dmBridge":"...",
   "altText":"..."
 }
-
-Regeln:\n- Deutsch, Du-Form, keine Emojis.\n- Struktur: Hook -> Nutzen -> Mini-Beispiel -> Frage.\n- Stil DNA: ${els.profile.value}\n- Zielgruppe: ${els.audience.value}\n- Schärfegrad 0-100: ${sharp}\n- CTA-Typ: ${els.cta.value}\n- Länge finalPost: ${limits} Wörter.\n- Maximal EINEN konkreten Zahlen-/Trend-Claim. Wenn keine solide Basis, dann null Zahlen.\n- Anti-generic: vermeide Phrasen wie "in der heutigen Zeit", "Gamechanger", "revolutionär", "letztendlich".\n- These: ${els.thesis.value}\n- Mode: ${mode}\n- Researchpunkte: ${JSON.stringify(state.research.trends)}\n`;
-
-  const text = await geminiGenerate(apiKey, prompt, { model: "gemini-2.5-pro" });
+Regeln:
+- Deutsch, Du-Form, keine Emojis.
+- Struktur: Hook -> Nutzen -> Mini-Beispiel -> Frage.
+- Stil DNA: ${els.profile.value}
+- Zielgruppe: ${els.audience.value}
+- Schärfegrad 0-100: ${sharp}
+- CTA-Typ: ${els.cta.value}
+- Länge finalPost: ${limits} Wörter.
+- Maximal EINEN konkreten Zahlen-/Trend-Claim. Sonst ohne Zahlen.
+- Vermeide generische Floskeln.
+- These: ${els.thesis.value}
+- Mode: ${mode}
+- Researchpunkte: ${JSON.stringify(state.research.trends)}
+`;
+  const text = await gptGenerate(apiKey, prompt);
   const parsed = safeJson(text);
   return {
     finalPost: parsed.finalPost || "",
@@ -151,40 +162,44 @@ Regeln:\n- Deutsch, Du-Form, keine Emojis.\n- Struktur: Hook -> Nutzen -> Mini-B
     hookB: parsed.hookB || "",
     comment1: parsed.comment1 || "",
     dmBridge: parsed.dmBridge || "",
-    altText: parsed.altText || "Portrait mit Textoverlay im Corporate-Stil.",
+    altText: parsed.altText || "Portrait mit klarem Textoverlay im Corporate-Stil.",
   };
 }
 
 async function fetchOverlayLines(apiKey) {
-  const prompt = `Erzeuge 3 kurze Overlay-Texte (Deutsch) für ein LinkedIn-Bild. Maximal 6 Wörter je Zeile, technisch-pragmatisch, kein Buzzword.\nAntwort als JSON: {"lines":["...","...","..."]}`;
-  const text = await geminiGenerate(apiKey, prompt, { model: "gemini-2.5-pro" });
+  const prompt = `Erzeuge 3 Overlay-Texte (Deutsch), jeweils max. 6 Wörter, technisch-pragmatisch, ohne Buzzwords.
+Antwort NUR als JSON: {"lines":["...","...","..."]}`;
+  const text = await gptGenerate(apiKey, prompt);
   const parsed = safeJson(text);
   return (parsed.lines || []).slice(0, 3);
 }
 
-async function geminiGenerate(apiKey, prompt, options = {}) {
-  const model = options.model || "gemini-2.5-pro";
-  const body = {
-    contents: [{ role: "user", parts: [{ text: prompt }] }],
-    generationConfig: {
-      temperature: 0.7,
-      responseMimeType: "text/plain",
-    },
+async function gptGenerate(apiKey, prompt, options = {}) {
+  const payload = {
+    model: "gpt-5",
+    input: prompt,
+    text: { verbosity: "medium" },
   };
-  if (options.tools) body.tools = options.tools;
 
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const msg = await res.text();
-    throw new Error(`Gemini API Fehler (${res.status}): ${msg}`);
+  if (options.useWebSearch) {
+    payload.tools = [{ type: "web_search_preview" }];
   }
+
+  const res = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    throw new Error(`OpenAI API Fehler (${res.status}): ${await res.text()}`);
+  }
+
   const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.map((p) => p.text).join("\n") || "";
-  return text.trim();
+  return (data.output_text || "").trim();
 }
 
 function applyPost(post) {
@@ -197,32 +212,23 @@ function applyPost(post) {
 }
 
 function runQualityGates() {
-  const genericPhrases = [
-    "in der heutigen zeit",
-    "gamechanger",
-    "revolutionär",
-    "letztendlich",
-    "am ende des tages",
-  ];
-
+  const genericPhrases = ["in der heutigen zeit", "gamechanger", "revolutionär", "letztendlich", "am ende des tages"];
   let post = els.postFinal.value;
   const found = genericPhrases.filter((p) => post.toLowerCase().includes(p));
   found.forEach((phrase) => {
-    const re = new RegExp(phrase, "ig");
-    post = post.replace(re, "konkret im Prozess");
+    post = post.replace(new RegExp(phrase, "ig"), "konkret im Prozess");
   });
 
   const consistent = ensureConsistency(post, els.thesis.value);
-  const brand = brandFitScore(post);
+  const brand = brandFitScore(consistent);
   els.postFinal.value = consistent;
 
-  const gateSummary = [
+  els.qualityState.textContent = [
     found.length ? `Anti-Generic: ${found.length} ersetzt` : "Anti-Generic: ok",
     consistent === post ? "Consistency: ok" : "Consistency: angepasst",
     `Brand Fit: ${brand}/5`,
   ].join(" | ");
 
-  els.qualityState.textContent = gateSummary;
   els.wordCount.textContent = wordCount(els.postFinal.value);
 }
 
@@ -239,23 +245,23 @@ function ensureConsistency(post, thesis) {
 function brandFitScore(post) {
   const markers = ["workflow", "kontext", "präzision", "operationalisierung", "reibung", "werkzeug"];
   const lower = post.toLowerCase();
-  const points = markers.reduce((acc, m) => acc + (lower.includes(m) ? 1 : 0), 0);
+  const points = markers.reduce((acc, marker) => acc + (lower.includes(marker) ? 1 : 0), 0);
   return Math.max(1, Math.min(5, points));
 }
 
 function renderResearch() {
   els.trendList.innerHTML = "";
   els.sourceList.innerHTML = "";
-  state.research.trends.forEach((t) => {
+  state.research.trends.forEach((trend) => {
     const li = document.createElement("li");
-    li.textContent = t;
+    li.textContent = trend;
     els.trendList.appendChild(li);
   });
-  state.research.sources.forEach((s) => {
+  state.research.sources.forEach((source) => {
     const li = document.createElement("li");
     const a = document.createElement("a");
-    a.href = s;
-    a.textContent = s;
+    a.href = source;
+    a.textContent = source;
     a.target = "_blank";
     li.appendChild(a);
     els.sourceList.appendChild(li);
@@ -296,13 +302,12 @@ async function renderCanvas(ratio) {
   const textY = h * 0.88;
   const fontSize = Math.round(w * 0.056);
   ctx.font = `700 ${fontSize}px Inter, Arial, sans-serif`;
-  ctx.textBaseline = "alphabetic";
 
   let x = textX;
   words.forEach((word, i) => {
     ctx.fillStyle = i === accentIdx ? "#425CF0" : "#ffffff";
     ctx.fillText(word, x, textY);
-    x += ctx.measureText(word + " ").width;
+    x += ctx.measureText(`${word} `).width;
   });
 
   const pngUrl = canvas.toDataURL("image/png");
@@ -319,17 +324,20 @@ async function renderCanvas(ratio) {
 }
 
 function updateAssetsJson() {
-  const payload = {
-    post: els.postFinal.value,
-    hooks: [els.hookA.value, els.hookB.value],
-    comment1: els.comment1.value,
-    dmBridge: els.dmBridge.value,
-    overlayText: [els.overlay1.value, els.overlay2.value, els.overlay3.value],
-    selectedOverlay: els.overlaySelected.value,
-    altText: state.post?.altText || "",
-    researchLinks: state.research.sources,
-  };
-  els.assetsJson.value = JSON.stringify(payload, null, 2);
+  els.assetsJson.value = JSON.stringify(
+    {
+      post: els.postFinal.value,
+      hooks: [els.hookA.value, els.hookB.value],
+      comment1: els.comment1.value,
+      dmBridge: els.dmBridge.value,
+      overlayText: [els.overlay1.value, els.overlay2.value, els.overlay3.value],
+      selectedOverlay: els.overlaySelected.value,
+      altText: state.post?.altText || "",
+      researchLinks: state.research.sources,
+    },
+    null,
+    2,
+  );
 }
 
 function safeJson(str) {

@@ -12,7 +12,7 @@ Dann im Browser öffnen: `http://localhost:4173`
 
 ## Hinweise
 
-- Für Text/Research wird die Gemini API direkt im Browser verwendet (`generateContent`).
-- Research-Modus nutzt Google Search Grounding über `tools: [{ google_search: {} }]`.
+- Für Text, Hooks, Kommentar/DM und Research wird die OpenAI Responses API direkt im Browser verwendet (`model: gpt-5`).
+- Optionaler Research-Modus nutzt Websuche über `tools: [{ type: "web_search_preview" }]`.
 - Visual-Rendering passiert lokal auf Canvas (PNG 4:5 und 1:1), inkl. dunklem Verlauf unten links und Akzentfarbe `#425CF0`.
 - Export enthält Copy-Buttons sowie ein `Assets JSON`-Feld.
