@@ -16,3 +16,4 @@ Dann im Browser öffnen: `http://localhost:4173`
 - Optionaler Research-Modus nutzt Websuche über `tools: [{ type: "web_search_preview" }]`.
 - Visual-Rendering passiert lokal auf Canvas (PNG 4:5 und 1:1), inkl. dunklem Verlauf unten links und Akzentfarbe `#425CF0`.
 - Export enthält Copy-Buttons sowie ein `Assets JSON`-Feld.
+- Eingaben (inkl. API Key, These, Slider/Dropdowns, Stil-DNA) werden im Browser per `localStorage` persistiert.

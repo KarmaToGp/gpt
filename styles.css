@@ -50,6 +50,7 @@ button, a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  pointer-events: auto;
 }
 button:hover, a:hover { border-color: #5c6f92; }
 button.primary {
@@ -110,6 +111,7 @@ button.primary {
   border-radius: 10px;
   border: 1px solid #44516c;
   background: #0a0f18;
+  pointer-events: none;
 }
 #trendList li, #sourceList li { margin: 0.4rem 0; color: #d7deed; }
 @media (max-width: 980px) {

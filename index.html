@@ -76,7 +76,7 @@ Brand: Werkzeug/Präzision/Reibung/Workflow.</textarea>
       </details>
 
       <div class="actions">
-        <button id="generateAll" class="primary">Alles generieren</button>
+        <button type="button" id="generateAll" class="primary">Alles generieren</button>
       </div>
 
       <div id="status" class="status" role="status"></div>
@@ -84,9 +84,9 @@ Brand: Werkzeug/Präzision/Reibung/Workflow.</textarea>
 
     <section class="panel outputs">
       <nav class="tabs">
-        <button data-tab="post" class="active">Post</button>
-        <button data-tab="visual">Visual</button>
-        <button data-tab="research">Research</button>
+        <button type="button" data-tab="post" class="active">Post</button>
+        <button type="button" data-tab="visual">Visual</button>
+        <button type="button" data-tab="research">Research</button>
       </nav>
 
       <section id="tab-post" class="tab active">
@@ -123,16 +123,16 @@ Brand: Werkzeug/Präzision/Reibung/Workflow.</textarea>
         </label>
 
         <div class="row wrap">
-          <button data-copy="postFinal">Copy Final</button>
-          <button data-copy="hookA">Copy Hook A</button>
-          <button data-copy="hookB">Copy Hook B</button>
-          <button data-copy="comment1">Copy Kommentar</button>
-          <button data-copy="dmBridge">Copy DM</button>
+          <button type="button" data-copy="postFinal">Copy Final</button>
+          <button type="button" data-copy="hookA">Copy Hook A</button>
+          <button type="button" data-copy="hookB">Copy Hook B</button>
+          <button type="button" data-copy="comment1">Copy Kommentar</button>
+          <button type="button" data-copy="dmBridge">Copy DM</button>
         </div>
         <div class="row wrap">
-          <button id="regenHooks">Regenerate Hooks</button>
-          <button id="regenCta">Regenerate CTA</button>
-          <button id="regenAll">Regenerate Alles</button>
+          <button type="button" id="regenHooks">Regenerate Hooks</button>
+          <button type="button" id="regenCta">Regenerate CTA</button>
+          <button type="button" id="regenAll">Regenerate Alles</button>
         </div>
       </section>
 
@@ -158,8 +158,8 @@ Brand: Werkzeug/Präzision/Reibung/Workflow.</textarea>
         </label>
 
         <div class="row wrap">
-          <button id="render45">Render PNG (4:5)</button>
-          <button id="render11">Render PNG (1:1)</button>
+          <button type="button" id="render45">Render PNG (4:5)</button>
+          <button type="button" id="render11">Render PNG (1:1)</button>
         </div>
 
         <div class="row wrap">
@@ -179,7 +179,7 @@ Brand: Werkzeug/Präzision/Reibung/Workflow.</textarea>
       <section class="assets">
         <h3>Assets JSON</h3>
         <textarea id="assetsJson" rows="10" readonly></textarea>
-        <button data-copy="assetsJson">Copy Assets JSON</button>
+        <button type="button" data-copy="assetsJson">Copy Assets JSON</button>
       </section>
     </section>
   </main>

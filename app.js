@@ -7,6 +7,8 @@ const state = {
   rendered: {},
 };
 
+const STORAGE_KEY = "niklas-mode-settings-v1";
+
 const els = {
   apiKey: document.getElementById("apiKey"),
   portrait: document.getElementById("portrait"),
@@ -72,9 +74,18 @@ els.portrait.addEventListener("change", async (e) => {
 document.querySelectorAll("[data-copy]").forEach((btn) => {
   btn.addEventListener("click", async () => {
     const id = btn.getAttribute("data-copy");
-    await navigator.clipboard.writeText(els[id].value || "");
-    setStatus(`In Zwischenablage kopiert: ${id}`);
+    try {
+      await navigator.clipboard.writeText(els[id].value || "");
+      setStatus(`In Zwischenablage kopiert: ${id}`);
+    } catch {
+      setStatus("Kopieren im aktuellen Browser-Kontext nicht erlaubt.");
+    }
   });
+});
+
+[els.apiKey, els.thesis, els.audience, els.sharpness, els.cta, els.researchToggle, els.profile].forEach((el) => {
+  el.addEventListener("input", persistSettings);
+  el.addEventListener("change", persistSettings);
 });
 
 document.getElementById("generateAll").addEventListener("click", () => generate("all"));
@@ -375,4 +386,37 @@ function setStatus(msg) {
   els.status.textContent = msg;
 }
 
+function persistSettings() {
+  const payload = {
+    apiKey: els.apiKey.value,
+    thesis: els.thesis.value,
+    audience: els.audience.value,
+    sharpness: els.sharpness.value,
+    cta: els.cta.value,
+    researchToggle: els.researchToggle.checked,
+    profile: els.profile.value,
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+}
+
+function restoreSettings() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return;
+  try {
+    const saved = JSON.parse(raw);
+    els.apiKey.value = saved.apiKey || "";
+    els.thesis.value = saved.thesis || "";
+    els.audience.value = saved.audience || els.audience.value;
+    els.sharpness.value = saved.sharpness || els.sharpness.value;
+    els.cta.value = saved.cta || els.cta.value;
+    els.researchToggle.checked = Boolean(saved.researchToggle);
+    els.profile.value = saved.profile || els.profile.value;
+    const n = Number(els.sharpness.value);
+    els.sharpnessValue.textContent = n < 33 ? "neutral" : n < 66 ? "direkt" : "kantig";
+  } catch {
+    localStorage.removeItem(STORAGE_KEY);
+  }
+}
+
+restoreSettings();
 updateAssetsJson();
