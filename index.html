@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LinkedIn Post + Visual Generator (Niklas Mode)</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>LinkedIn Post + Visual Generator <span>(Niklas Mode)</span></h1>
+    <p>Eine Single-Page-App für Post-Text, Hooks, Kommentar/DM und Visual-Overlays.</p>
+  </header>
+
+  <main class="layout">
+    <section class="panel inputs">
+      <h2>Inputs</h2>
+
+      <label class="field">
+        <span>OpenAI API Key</span>
+        <input id="apiKey" type="password" placeholder="sk-..." autocomplete="off" />
+      </label>
+
+      <label class="field">
+        <span>Portrait Upload</span>
+        <input id="portrait" type="file" accept="image/*" />
+      </label>
+
+      <div class="preview-wrap">
+        <img id="portraitPreview" alt="Portrait Vorschau" hidden />
+      </div>
+
+      <label class="field">
+        <span>These / Draft</span>
+        <textarea id="thesis" rows="5" placeholder="z. B. Prompting ist überschätzt. Entscheidend sind Workflow-Design und Kontext."></textarea>
+      </label>
+
+      <label class="field">
+        <span>Zielgruppe</span>
+        <select id="audience">
+          <option>C-Level</option>
+          <option>Marketing</option>
+          <option>IT/Architektur</option>
+          <option>HR/L&amp;D</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span>Schärfe: <strong id="sharpnessValue">neutral</strong></span>
+        <input id="sharpness" type="range" min="0" max="100" value="45" />
+      </label>
+
+      <label class="field">
+        <span>CTA</span>
+        <select id="cta">
+          <option>Diskussion</option>
+          <option>Termin</option>
+          <option>Download</option>
+        </select>
+      </label>
+
+      <label class="switch">
+        <input id="researchToggle" type="checkbox" />
+        <span>Trends/Belege einbeziehen</span>
+      </label>
+
+      <details class="profile-panel">
+        <summary>Profil / Stil-DNA (editierbar)</summary>
+        <textarea id="profile" rows="10">Deutsch, klar, keine Buzzwords/Floskeln.
+Struktur: Hook → Nutzen → Mini-Beispiel → Frage.
+Fokus: Workflow-Design, Kontext, Präzision, Operationalisierung.
+Keine Prompt-Framework-Predigten; Prompting als Verständnis, nicht als Pflicht-Handwerk.
+Keine Emojis.
+Ton: direkt, respektvoll, technisch-pragmatisch.
+Brand: Werkzeug/Präzision/Reibung/Workflow.</textarea>
+      </details>
+
+      <div class="actions">
+        <button type="button" id="generateAll" class="primary">Alles generieren</button>
+      </div>
+
+      <div id="status" class="status" role="status"></div>
+    </section>
+
+    <section class="panel outputs">
+      <nav class="tabs">
+        <button type="button" data-tab="post" class="active">Post</button>
+        <button type="button" data-tab="visual">Visual</button>
+        <button type="button" data-tab="research">Research</button>
+      </nav>
+
+      <section id="tab-post" class="tab active">
+        <h2>Post</h2>
+        <div class="kpis">
+          <span>Wortanzahl: <strong id="wordCount">0</strong></span>
+          <span>Quality Gates: <strong id="qualityState">-</strong></span>
+        </div>
+
+        <label class="field">
+          <span>Final</span>
+          <textarea id="postFinal" rows="12"></textarea>
+        </label>
+
+        <div class="row two">
+          <label class="field">
+            <span>Hook A</span>
+            <textarea id="hookA" rows="3"></textarea>
+          </label>
+          <label class="field">
+            <span>Hook B</span>
+            <textarea id="hookB" rows="3"></textarea>
+          </label>
+        </div>
+
+        <label class="field">
+          <span>Kommentar #1</span>
+          <textarea id="comment1" rows="4"></textarea>
+        </label>
+
+        <label class="field">
+          <span>DM-Bridge</span>
+          <textarea id="dmBridge" rows="3"></textarea>
+        </label>
+
+        <div class="row wrap">
+          <button type="button" data-copy="postFinal">Copy Final</button>
+          <button type="button" data-copy="hookA">Copy Hook A</button>
+          <button type="button" data-copy="hookB">Copy Hook B</button>
+          <button type="button" data-copy="comment1">Copy Kommentar</button>
+          <button type="button" data-copy="dmBridge">Copy DM</button>
+        </div>
+        <div class="row wrap">
+          <button type="button" id="regenHooks">Regenerate Hooks</button>
+          <button type="button" id="regenCta">Regenerate CTA</button>
+          <button type="button" id="regenAll">Regenerate Alles</button>
+        </div>
+      </section>
+
+      <section id="tab-visual" class="tab">
+        <h2>Visual</h2>
+
+        <label class="field">
+          <span>Overlay Vorschlag 1</span>
+          <input id="overlay1" />
+        </label>
+        <label class="field">
+          <span>Overlay Vorschlag 2</span>
+          <input id="overlay2" />
+        </label>
+        <label class="field">
+          <span>Overlay Vorschlag 3</span>
+          <input id="overlay3" />
+        </label>
+
+        <label class="field">
+          <span>Auswahl (für Render)</span>
+          <input id="overlaySelected" placeholder="Bis zu 6 Wörter" />
+        </label>
+
+        <div class="row wrap">
+          <button type="button" id="render45">Render PNG (4:5)</button>
+          <button type="button" id="render11">Render PNG (1:1)</button>
+        </div>
+
+        <div class="row wrap">
+          <a id="download45" download="niklas-visual-4x5.png" hidden>Download 4:5</a>
+          <a id="download11" download="niklas-visual-1x1.png" hidden>Download 1:1</a>
+        </div>
+
+        <canvas id="canvasPreview" width="800" height="1000"></canvas>
+      </section>
+
+      <section id="tab-research" class="tab">
+        <h2>Research</h2>
+        <ul id="trendList"></ul>
+        <ol id="sourceList"></ol>
+      </section>
+
+      <section class="assets">
+        <h3>Assets JSON</h3>
+        <textarea id="assetsJson" rows="10" readonly></textarea>
+        <button type="button" data-copy="assetsJson">Copy Assets JSON</button>
+      </section>
+    </section>
+  </main>
+
+  <script src="app.js" type="module"></script>
+</body>
+</html>
